@@ -52,6 +52,8 @@ class Pet(Rectangle):
         self.vx:float = 0
         self.vy:float = 0
 
+        self.on_floor:bool = False
+
         self.head = QPixmap(self.base_path + "head.png")
         self.body = QPixmap(self.base_path + "body.png")
         self.back_leg = QPixmap(self.base_path + "back_leg.png")
@@ -83,15 +85,31 @@ class Pet(Rectangle):
             self.motion(delta,screen)
 
     def motion(self, delta:float, screen:dict):
+        if self.on_floor:
+            self.vx += (0.0 - self.vx) / 5
         self.vy += self.gravity * delta
 
         self.x += round(self.vx)
         self.y += round(self.vy)
 
+        centerx:float = round(float(self.x) + float(self.width) / 2.0)
+
         bottom = self.y + self.height
         if bottom >= screen["bottom"]:
             self.y = screen["bottom"] - self.height
             self.vy = 0
+            self.on_floor = True
+        else:
+            self.on_floor = False
+
+        if centerx < screen["left"]:
+            self.x = round(screen["left"] - (self.width / 2))
+            self.vx = 0.0
+        if centerx > screen["right"]:
+            self.x = round(screen["right"] - (self.width / 2))
+            self.vx = 0.0
+
+        print(self.x,self.y)
     
     def dragging(self, mouse: dict):
         if self.selected and not mouse["down"]:
