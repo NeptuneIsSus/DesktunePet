@@ -7,72 +7,34 @@ from PySide6.QtGui import QCursor, QFont, QIcon, QPaintEvent, QPainter, QColor, 
 import win32api
 import win32con
 
+from pet import Rectangle, Pet
+
 
 # ===============================================       Globals     ==========================================================
 
 
-mx:int
-my:int
-mdown:bool
+screen = {
+    "x": 0,
+    "y": 0,
+    "width": 0,
+    "height": 0,
+    "left": 0,
+    "right": 0,
+    "top": 0,
+    "bottom": 0
+}
+
+mouse = {
+    "x": 0,
+    "y": 0,
+    "down": False
+}
 
 
 # ===============================================       Classes     ==========================================================
 
 
-class Rectangle:
-    def __init__(self,name:str,position:tuple[int,int]=(0,0),size:tuple[int,int]=(100,100),color:QColor=QColor(255,0,0,255)):
-        self.name:str = name
-        self.x:int = position[0]
-        self.y:int = position[1]
-        self.width:int = size[0]
-        self.height:int = size[1]
-        self.selected:bool = False
-        self.color:QColor = color
-        self.mOffset:list[int] = [0,0]
 
-    def get_region(self) -> QRegion:
-        return QRegion(
-            self.x, self.y,
-            self.width, self.height
-        )
-
-    def draw(self, painter:QPainter):
-        painter.fillRect(
-            self.x,self.y,
-            self.width,self.height,
-            self.color
-        )
-
-    def process(self, delta:float):
-        if self.selected: self.moving()
-
-    def contains(self, x, y):
-        return (
-            self.x <= x < self.x + self.width
-            and self.y <= y < self.y + self.height
-        )
-
-    def on_click(self):
-        global mx
-        global my
-
-        print(f"Clicked rectangle named {self.name}")
-
-        self.mOffset[0] = self.x - mx
-        self.mOffset[1] = self.y - my
-        
-        self.selected = True
-
-    def moving(self):
-        if self.selected and not mdown:
-            self.selected = False
-            return
-
-        global mx
-        global my
-
-        self.x = mx + self.mOffset[0]
-        self.y = my + self.mOffset[1]
 
 class Overlay(QWidget):
     def rectAdd(self, r:Rectangle):
@@ -120,20 +82,18 @@ class Overlay(QWidget):
 
     def process(self):
         # calculate mouse position
-        global mx
-        global my
-        global mdown
+        global mouse
 
         pos = QCursor.pos()
-        mx = pos.x()
-        my = pos.y()
-        mdown = (win32api.GetAsyncKeyState(win32con.VK_LBUTTON) & 0x8000) != 0
+        mouse["x"] = pos.x()
+        mouse["y"] = pos.y()
+        mouse["down"] = (win32api.GetAsyncKeyState(win32con.VK_LBUTTON) & 0x8000) != 0
 
         # regular rectangle function:
         delta = self.clock.restart() / 1000.0
 
         for r in self.rectangles:
-            r.process(delta)
+            r.process(delta, mouse, screen)
 
         self.update_regions()
 
@@ -144,12 +104,11 @@ class Overlay(QWidget):
             r.draw(painter)
 
     def mousePressEvent(self, event):
-        global mx
-        global my
+        global mouse
 
         for r in reversed(self.rectangles):
-            if r.contains(mx,my):
-                r.on_click()
+            if r.contains(mouse["x"],mouse["y"]):
+                r.on_click(mouse)
                 break
 
 
@@ -158,15 +117,26 @@ class Overlay(QWidget):
 
 app = QApplication(sys.argv)
 
+scr = QApplication.primaryScreen()
+bounds = scr.geometry()
+
+screen["x"] = bounds.x()
+screen["y"] = bounds.y()
+screen["width"] = bounds.width()
+screen["height"] = bounds.height()
+screen["left"] = bounds.left()
+screen["right"] = bounds.right()
+screen["top"] = bounds.top()
+screen["bottom"] = bounds.bottom()
+
+print(screen)
+
 overlay = Overlay()
 
-rect1 = Rectangle("bob",(100,100),(150,150),QColor(255,0,0,200))
-rect2 = Rectangle("bill",(400,200),(200,100),QColor(0,255,0,200))
-rect3 = Rectangle("josh",(700,400),(120,120),QColor(0,0,255,200))
-
+rect1 = Rectangle("rect",position=(500,500),color=QColor(255,255,255,255))
+pet = Pet("bubby")
 overlay.rectAdd(rect1)
-overlay.rectAdd(rect2)
-overlay.rectAdd(rect3)
+overlay.rectAdd(pet)
 
 overlay.show()
 
